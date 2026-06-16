@@ -1,0 +1,42 @@
+export const mockEvents = [
+  {
+    id: 1,
+    event_type: "Accident",
+    corridor: "Subhash Nagar / Majestic",
+    lat: 12.9778,
+    lng: 77.5724,
+    severity: "High"
+  },
+  {
+    id: 2,
+    event_type: "Road Blockage",
+    corridor: "Indiranagar 100 Feet Rd",
+    lat: 12.9719,
+    lng: 77.6412,
+    severity: "Medium"
+  },
+  {
+    id: 3,
+    event_type: "Traffic Jam",
+    corridor: "Koramangala 80 Feet Rd",
+    lat: 12.9348,
+    lng: 77.6189,
+    severity: "Low"
+  },
+  {
+    id: 4,
+    event_type: "Waterlogging",
+    corridor: "Silk Board Junction",
+    lat: 12.9176,
+    lng: 77.6244,
+    severity: "High"
+  },
+  {
+    id: 5,
+    event_type: "Procession",
+    corridor: "MG Road",
+    lat: 12.9756,
+    lng: 77.6067,
+    severity: "Medium"
+  }
+];
