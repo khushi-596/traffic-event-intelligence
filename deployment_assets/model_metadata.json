@@ -1,0 +1,15 @@
+{
+    "project_name": "Astram AI Traffic Event Forecasting",
+    "version": "1.0",
+    "models": [
+        "priority_classifier",
+        "duration_regressor",
+        "recommendation_engine",
+        "knn_similarity"
+    ],
+    "training_records": 8170,
+    "priority_accuracy": 0.9991869918699188,
+    "median_duration_error": 16.789809021630866,
+    "mean_duration_error": 50.17054550305133,
+    "created_for": "Hackathon Submission"
+}

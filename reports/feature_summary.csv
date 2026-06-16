@@ -1,0 +1,57 @@
+feature,dtype
+id,object
+event_type,object
+latitude,float64
+longitude,float64
+endlatitude,float64
+endlongitude,float64
+address,object
+end_address,object
+event_cause,object
+requires_road_closure,int64
+start_datetime,"datetime64[ns, UTC]"
+end_datetime,"datetime64[ns, UTC]"
+status,object
+authenticated,object
+modified_datetime,object
+map_file,float64
+direction,object
+description,object
+veh_type,object
+veh_no,object
+corridor,object
+priority,object
+reason_breakdown,object
+created_date,"datetime64[ns, UTC]"
+route_path,object
+client_id,int64
+created_by_id,object
+last_modified_by_id,object
+assigned_to_police_id,object
+comment,float64
+police_station,object
+meta_data,float64
+kgid,object
+resolved_at_address,object
+resolved_at_latitude,float64
+resolved_at_longitude,float64
+closed_by_id,object
+closed_datetime,"datetime64[ns, UTC]"
+resolved_by_id,object
+resolved_datetime,"datetime64[ns, UTC]"
+gba_identifier,object
+zone,object
+junction,object
+duration_minutes,float64
+hour_of_day,float64
+day_of_week,float64
+month,float64
+is_weekend,int64
+time_bucket,object
+log_duration,float64
+planned_flag,int64
+lead_time_hours,float64
+event_cause_frequency,int64
+corridor_frequency,float64
+zone_frequency,int64
+is_peak_hour,int64
