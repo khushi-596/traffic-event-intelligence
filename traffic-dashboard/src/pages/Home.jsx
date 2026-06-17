@@ -14,9 +14,9 @@ import {
 function Home() {
   const stats = [
     { value: "8,173", label: "Historical Events", icon: <FaDatabase /> },
-    { value: "5,030", label: "High Priority Events", icon: <FaCheckCircle style={{ color: "#dc2626" }} /> },
-    { value: "7,706", label: "Unplanned Events", icon: <FaFileAlt style={{ color: "#f59e0b" }} /> },
-    { value: "18", label: "Major Traffic Corridors", icon: <FaRoad style={{ color: "#2563eb" }} /> }
+    { value: "5,030", label: "High Priority Events", icon: <FaCheckCircle /> },
+    { value: "7,706", label: "Unplanned Events", icon: <FaFileAlt /> },
+    { value: "18", label: "Major Traffic Corridors", icon: <FaRoad /> }
   ];
 
   const features = [
@@ -116,7 +116,7 @@ function Home() {
         <section className="stats-strip-section">
           <div className="stats-strip">
             {stats.map((stat, i) => (
-              <div key={i} className="stats-card">
+              <div key={i} className={`stats-card ${i === 1 || i === 2 ? "stat-card-warm" : ""}`}>
                 <div className="stats-card-header">
                   <span className="stats-icon">{stat.icon}</span>
                   <span className="stats-value">{stat.value}</span>
@@ -159,7 +159,7 @@ function Home() {
           <div className="works-timeline">
             {steps.map((step, i) => (
               <div key={i} className="timeline-step">
-                <div className="step-number-badge">{step.num}</div>
+                <div className={`step-number-badge ${i % 2 === 1 ? "step-badge-warm" : ""}`}>{step.num}</div>
                 <h4 className="step-title">{step.title}</h4>
                 <p className="step-desc">{step.desc}</p>
               </div>
