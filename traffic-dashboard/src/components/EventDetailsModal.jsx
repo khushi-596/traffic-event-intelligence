@@ -5,6 +5,8 @@ function EventDetailsModal({ isOpen, onClose, event }) {
 
   const getPriorityBadgeStyles = (priority) => {
     switch (priority?.toLowerCase()) {
+      case "critical":
+        return { backgroundColor: "#fee2e2", color: "#7f1d1d", borderColor: "#fda4af" };
       case "high":
         return { backgroundColor: "#fee2e2", color: "var(--severity-risk)", borderColor: "#fca5a5" };
       case "medium":

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, CircleMarker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import API from "../services/api";
@@ -10,10 +10,88 @@ const USE_MOCK = true; // Set to false to swap for a live /events API call later
 // Bengaluru center coordinates
 const BENGALURU_CENTER = [12.9716, 77.5946];
 
+// Major corridors data
+const CORRIDORS = [
+  {
+    name: "Mysore Road",
+    coords: [
+      [12.965, 77.575],
+      [12.95, 77.55],
+      [12.93, 77.52],
+      [12.91, 77.48]
+    ]
+  },
+  {
+    name: "Outer Ring Road",
+    coords: [
+      [12.9176, 77.6244],
+      [12.93, 77.68],
+      [12.97, 77.69],
+      [13.01, 77.67],
+      [13.03, 77.64],
+      [13.0360, 77.5975]
+    ]
+  },
+  {
+    name: "Bellary Road",
+    coords: [
+      [12.99, 77.59],
+      [13.02, 77.59],
+      [13.0360, 77.5975],
+      [13.06, 77.60],
+      [13.08, 77.61]
+    ]
+  },
+  {
+    name: "Hosur Road",
+    coords: [
+      [12.96, 77.61],
+      [12.94, 77.62],
+      [12.9176, 77.6244],
+      [12.89, 77.64],
+      [12.86, 77.66]
+    ]
+  }
+];
+
+// Important junctions
+const JUNCTIONS = [
+  { name: "Silk Board Junction", coords: [12.9176, 77.6244] },
+  { name: "Majestic Junction", coords: [12.9778, 77.5724] },
+  { name: "Hebbal Flyover", coords: [13.0360, 77.5975] },
+  { name: "Dairy Circle", coords: [12.9427, 77.6047] },
+  { name: "Tin Factory", coords: [13.0040, 77.6616] }
+];
+
+// High risk zones
+const RISK_ZONES = [
+  { name: "Silk Board Congestion Zone", coords: [12.9176, 77.6244], radius: 450, color: "#dc2626" },
+  { name: "Hebbal Traffic Choke Point", coords: [13.0360, 77.5975], radius: 500, color: "#dc2626" },
+  { name: "Majestic Terminal Jam Area", coords: [12.9778, 77.5724], radius: 500, color: "#f97316" }
+];
+
+// Heatmap points for risk calendar preview
+const HEATMAP_POINTS = [
+  { coords: [12.9176, 77.6244], radius: 1500, color: "#ef4444" }, // Silk Board (Critical)
+  { coords: [12.9778, 77.5724], radius: 1500, color: "#ef4444" }, // Majestic (Critical)
+  { coords: [12.9348, 77.6189], radius: 1200, color: "#f97316" }, // Koramangala (High)
+  { coords: [12.9719, 77.6412], radius: 1200, color: "#f97316" }, // Indiranagar (High)
+  { coords: [12.956, 77.595], radius: 1000, color: "#eab308" },  // Richmond Road (Medium)
+  { coords: [13.0360, 77.5975], radius: 1400, color: "#eab308" }, // Hebbal (Medium)
+  { coords: [12.92, 77.54], radius: 1100, color: "#10b981" },    // Banashankari (Low)
+  { coords: [12.99, 77.66], radius: 1300, color: "#10b981" }     // K R Puram (Low)
+];
+
 function MapView({ onMarkerClick }) {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Map layer toggles
+  const [showMarkers, setShowMarkers] = useState(true);
+  const [showRiskZones, setShowRiskZones] = useState(true);
+  const [showCorridors, setShowCorridors] = useState(true);
+  const [showHeatmap, setShowHeatmap] = useState(true);
 
   useEffect(() => {
     const fetchEvents = async () => {
@@ -41,22 +119,25 @@ function MapView({ onMarkerClick }) {
 
   const getSeverityColor = (severity) => {
     switch (severity?.toLowerCase()) {
+      case "critical":
+        return "#7f1d1d"; // Dark Red
       case "high":
-        return "#EF4444"; // Red
+        return "#dc2626"; // Red
       case "medium":
-        return "#F59E0B"; // Orange
+        return "#f59e0b"; // Amber
       case "low":
-        return "#10B981"; // Emerald Green
+        return "#10b981"; // Green
       default:
-        return "#6B7280"; // Gray
+        return "#6b7280"; // Gray
     }
   };
 
   const createCustomIcon = (severity) => {
     const color = getSeverityColor(severity);
+    const isCritical = severity?.toLowerCase() === "critical";
     return L.divIcon({
       html: `<div class="custom-marker" style="--marker-color: ${color}">
-               <div class="marker-pulse"></div>
+               ${isCritical ? '<div class="marker-pulse"></div>' : ""}
                <div class="marker-core"></div>
              </div>`,
       className: "custom-div-icon",
@@ -66,7 +147,9 @@ function MapView({ onMarkerClick }) {
     });
   };
 
-  const highRiskCount = events.filter((e) => e.severity?.toLowerCase() === "high").length;
+  const highRiskCount = events.filter((e) =>
+    ["high", "critical"].includes(e.severity?.toLowerCase())
+  ).length;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -84,8 +167,8 @@ function MapView({ onMarkerClick }) {
             <strong style={{ color: "var(--accent-primary)" }}>{events.length} Active</strong>
           </div>
           <div style={{ fontSize: "13px" }}>
-            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>High Risk Events: </span>
-            <strong style={{ color: "var(--severity-risk)" }}>{highRiskCount} Critical</strong>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>High/Critical Risk: </span>
+            <strong style={{ color: "var(--severity-risk)" }}>{highRiskCount} Active</strong>
           </div>
         </div>
         <div style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 600 }}>
@@ -107,18 +190,133 @@ function MapView({ onMarkerClick }) {
           </div>
         )}
 
+        {/* Map Control Panel (Top Right Corner) */}
+        <div className="map-layer-control-panel">
+          <div className="control-panel-title">Layer Control</div>
+          <label className="control-panel-item">
+            <input
+              type="checkbox"
+              checked={showMarkers}
+              onChange={(e) => setShowMarkers(e.target.checked)}
+            />
+            <span>Incident Markers</span>
+          </label>
+          <label className="control-panel-item">
+            <input
+              type="checkbox"
+              checked={showRiskZones}
+              onChange={(e) => setShowRiskZones(e.target.checked)}
+            />
+            <span>Risk Zones</span>
+          </label>
+          <label className="control-panel-item">
+            <input
+              type="checkbox"
+              checked={showCorridors}
+              onChange={(e) => setShowCorridors(e.target.checked)}
+            />
+            <span>Traffic Corridors</span>
+          </label>
+          <label className="control-panel-item">
+            <input
+              type="checkbox"
+              checked={showHeatmap}
+              onChange={(e) => setShowHeatmap(e.target.checked)}
+            />
+            <span>Heatmap Overlay</span>
+          </label>
+        </div>
+
         <MapContainer
           center={BENGALURU_CENTER}
           zoom={12}
           style={{ width: "100%", height: "100%", borderRadius: "6px", zIndex: 1 }}
           zoomControl={true}
         >
+          {/* Light Professional basemap */}
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
 
-          {events.map((event) => (
+          {/* Heatmap Overlay Layer */}
+          {showHeatmap && HEATMAP_POINTS.map((point, idx) => (
+            <Circle
+              key={`heat-${idx}`}
+              center={point.coords}
+              radius={point.radius}
+              pathOptions={{
+                stroke: false,
+                fillColor: point.color,
+                fillOpacity: 0.22,
+              }}
+            />
+          ))}
+
+          {/* High-Risk Zones Layer */}
+          {showRiskZones && RISK_ZONES.map((zone, idx) => (
+            <Circle
+              key={`zone-${idx}`}
+              center={zone.coords}
+              radius={zone.radius}
+              pathOptions={{
+                color: zone.color,
+                fillColor: zone.color,
+                fillOpacity: 0.12,
+                weight: 1.5,
+                dashArray: "4 4",
+              }}
+            >
+              <Tooltip permanent direction="bottom" className="custom-tooltip-label">
+                <div style={{ fontWeight: 700, fontSize: "9px", color: zone.color, textTransform: "uppercase" }}>
+                  ⚠️ {zone.name}
+                </div>
+              </Tooltip>
+            </Circle>
+          ))}
+
+          {/* Traffic Corridors Layer */}
+          {showCorridors && CORRIDORS.map((corridor, idx) => (
+            <Polyline
+              key={`corr-${idx}`}
+              positions={corridor.coords}
+              pathOptions={{
+                color: "#2563eb",
+                weight: 4,
+                opacity: 0.5,
+              }}
+            >
+              <Tooltip permanent direction="center" className="custom-tooltip-label">
+                <span style={{ fontWeight: 700, color: "#1e3a8a", fontSize: "9px", textTransform: "uppercase" }}>
+                  🛣️ {corridor.name}
+                </span>
+              </Tooltip>
+            </Polyline>
+          ))}
+
+          {/* Important Junctions Layer */}
+          {showCorridors && JUNCTIONS.map((junction, idx) => (
+            <CircleMarker
+              key={`junc-${idx}`}
+              center={junction.coords}
+              radius={4.5}
+              pathOptions={{
+                fillColor: "#475569",
+                color: "#ffffff",
+                weight: 1.5,
+                fillOpacity: 1,
+              }}
+            >
+              <Tooltip permanent direction="top" offset={[0, -4]} className="custom-tooltip-label">
+                <div style={{ fontWeight: 700, fontSize: "9px", color: "#334155", textTransform: "uppercase" }}>
+                  📍 {junction.name}
+                </div>
+              </Tooltip>
+            </CircleMarker>
+          ))}
+
+          {/* Incident Markers Layer */}
+          {showMarkers && events.map((event) => (
             <Marker
               key={event.id}
               position={[event.lat, event.lng]}
@@ -130,7 +328,39 @@ function MapView({ onMarkerClick }) {
                   }
                 }
               }}
-            />
+            >
+              {/* Styled Leaflet Popup */}
+              <Popup>
+                <div className="popup-container">
+                  <div className="popup-header">
+                    <span className="popup-title">{event.event_type}</span>
+                    <span className={`popup-priority-badge ${event.severity.toLowerCase()}`}>
+                      {event.severity}
+                    </span>
+                  </div>
+                  <div className="popup-body">
+                    <div className="popup-field">
+                      <div className="field-label">Corridor</div>
+                      <div className="field-value font-highlight">{event.corridor}</div>
+                    </div>
+                    <div className="popup-field-row">
+                      <div className="popup-field">
+                        <div className="field-label">Predicted Duration</div>
+                        <div className="field-value font-highlight">{event.predicted_duration || "N/A"}</div>
+                      </div>
+                      <div className="popup-field">
+                        <div className="field-label">Recommended Manpower</div>
+                        <div className="field-value font-highlight">{event.manpower_recommended || "N/A"}</div>
+                      </div>
+                    </div>
+                    <div className="popup-field">
+                      <div className="field-label">Suggested Diversion</div>
+                      <div className="diversion-highlight">{event.suggested_diversion || "No diversion recommended"}</div>
+                    </div>
+                  </div>
+                </div>
+              </Popup>
+            </Marker>
           ))}
         </MapContainer>
       </div>

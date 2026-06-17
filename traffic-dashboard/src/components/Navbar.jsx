@@ -4,16 +4,39 @@ import { FaTrafficLight } from "react-icons/fa";
 
 function Navbar() {
   const [time, setTime] = useState(new Date().toLocaleTimeString());
+  const [lastUpdated, setLastUpdated] = useState("");
 
   useEffect(() => {
+    // Generate initial last updated timestamp (e.g., 2 minutes ago)
+    const updateTime = new Date(Date.now() - 120000).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    setLastUpdated(updateTime);
+
     const timer = setInterval(() => {
       setTime(new Date().toLocaleTimeString());
     }, 1000);
-    return () => clearInterval(timer);
+
+    // Periodically refresh last updated timestamp
+    const updateTimer = setInterval(() => {
+      const newUpdateTime = new Date(Date.now() - 30000).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
+      setLastUpdated(newUpdateTime);
+    }, 60000);
+
+    return () => {
+      clearInterval(timer);
+      clearInterval(updateTimer);
+    };
   }, []);
 
   return (
-    <nav className="navbar glass-panel">
+    <nav className="navbar">
       <Link to="/" className="nav-brand" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "12px" }}>
         <FaTrafficLight style={{ fontSize: "28px", color: "#3b82f6" }} />
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -25,12 +48,35 @@ function Navbar() {
           </span>
         </div>
       </Link>
-      <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-        <div className="nav-status" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      
+      <div className="nav-controls" style={{ display: "flex", alignItems: "center", gap: "20px" }}>
+        {/* System Status */}
+        <div className="nav-control-item" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <span className="status-dot-active" style={{ width: "8px", height: "8px", borderRadius: "50%", backgroundColor: "var(--severity-safe)" }}></span>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "#f8fafc" }}>SYSTEM STATUS: ONLINE</span>
+          <span style={{ fontSize: "11px", fontWeight: 700, color: "#f8fafc" }}>SYSTEM: ONLINE</span>
         </div>
-        <div style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>
+        
+        {/* Divider */}
+        <span style={{ color: "#334155", fontSize: "12px" }}>|</span>
+
+        {/* Data Source */}
+        <div className="nav-control-item" style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>
+          DATA SOURCE: <span style={{ color: "#3b82f6", fontWeight: 700 }}>ASTRAM</span>
+        </div>
+
+        {/* Divider */}
+        <span style={{ color: "#334155", fontSize: "12px" }}>|</span>
+
+        {/* Last Updated */}
+        <div className="nav-control-item" style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>
+          LAST UPDATED: <span style={{ color: "white" }}>{lastUpdated}</span>
+        </div>
+
+        {/* Divider */}
+        <span style={{ color: "#334155", fontSize: "12px" }}>|</span>
+
+        {/* Live clock */}
+        <div className="nav-control-item" style={{ fontSize: "11px", color: "#94a3b8", fontWeight: 600 }}>
           LIVE FEED: <span style={{ color: "white" }}>{time}</span>
         </div>
       </div>
@@ -39,3 +85,4 @@ function Navbar() {
 }
 
 export default Navbar;
+

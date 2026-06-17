@@ -36,6 +36,8 @@ function LiveEventsTable() {
 
   const getPriorityColor = (priority) => {
     switch (priority?.toLowerCase()) {
+      case "critical":
+        return { backgroundColor: "#fee2e2", color: "#7f1d1d", border: "1px solid #fda4af" };
       case "high":
         return { backgroundColor: "#fee2e2", color: "var(--severity-risk)", border: "1px solid #fca5a5" };
       case "medium":
@@ -109,6 +111,7 @@ function LiveEventsTable() {
               }}
             >
               <option value="all">All Priorities</option>
+              <option value="critical">Critical Severity</option>
               <option value="high">High Severity</option>
               <option value="medium">Medium Severity</option>
               <option value="low">Low Severity</option>
