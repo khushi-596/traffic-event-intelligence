@@ -68,7 +68,16 @@ def get_learning_metrics():
             df = pd.read_csv(_prediction_log_path)
             # Sample last 100 rows to keep it lightweight for chart rendering
             sub_df = df.tail(100)
-            return sub_df[["event_id", "duration_error", "rolling_mae", "rolling_accuracy"]].to_dict(orient="records")
+            cols = ["event_id", "duration_error", "rolling_mae", "rolling_accuracy"]
+            cols = [c for c in cols if c in sub_df.columns]
+            records = sub_df[cols].to_dict(orient="records")
+            # Sanitize NaN values for JSON compliance
+            import math
+            for rec in records:
+                for key, val in rec.items():
+                    if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+                        rec[key] = None
+            return records
         except Exception as e:
             logger.error(f"Failed to read prediction logs: {e}")
     return []

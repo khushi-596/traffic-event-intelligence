@@ -1,13 +1,12 @@
 import json
 from pathlib import Path
-from sqlalchemy import create_engine, Column, String, Float, Boolean, Integer, DateTime, text
+from sqlalchemy import create_engine, Column, String, Float, Boolean, Integer, DateTime, text, JSON
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from backend.config import DATABASE_URL, BASE_DIR
 
 Base = declarative_base()
 
-# Initialize Database Engine
 # If we use SQLite, allow multithreading access
 if DATABASE_URL.startswith("sqlite"):
     engine = create_engine(
@@ -73,6 +72,52 @@ class EventModel(Base):
     gba_identifier = Column(String(150), nullable=True)
     zone = Column(String(50), nullable=True)
     junction = Column(String(150), nullable=True)
+    # Derived feature columns
+    duration_minutes = Column(Float, nullable=True)
+    hour_of_day = Column(Integer, nullable=True)
+    day_of_week = Column(Integer, nullable=True)
+    is_weekend = Column(Boolean, nullable=True)
+    time_bucket = Column(String(20), nullable=True)
+    planned_flag = Column(Boolean, nullable=True)
+    lead_time_hours = Column(Float, nullable=True)
+
+# Prediction Log Model — Step 7: post-event learning
+class PredictionLogModel(Base):
+    __tablename__ = "prediction_log"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    event_id = Column(String(50), nullable=False, index=True)
+    timestamp = Column(DateTime(timezone=True), nullable=True)
+    predicted_priority = Column(String(20), nullable=True)
+    actual_priority = Column(String(20), nullable=True)
+    priority_correct = Column(Boolean, nullable=True)
+    predicted_duration = Column(Float, nullable=True)
+    actual_duration = Column(Float, nullable=True)
+    duration_error = Column(Float, nullable=True)
+    rolling_mae = Column(Float, nullable=True)
+    rolling_accuracy = Column(Float, nullable=True)
+
+# Risk Calendar Cache Model — Step 3: pre-aggregated heatmap data
+class RiskCalendarCacheModel(Base):
+    __tablename__ = "risk_calendar_cache"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    corridor = Column(String(150), nullable=True)
+    hour_of_day = Column(Integer, nullable=True)
+    event_cause = Column(String(100), nullable=True)
+    event_count = Column(Integer, default=0)
+    avg_duration_minutes = Column(Float, nullable=True)
+    high_priority_pct = Column(Float, nullable=True)
+    last_updated = Column(DateTime(timezone=True), nullable=True)
+
+# Evaluation Metrics Model — stores top-K hit rate etc.
+class EvaluationMetricModel(Base):
+    __tablename__ = "evaluation_metrics"
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    metric_name = Column(String(100), nullable=False)
+    metric_value = Column(Float, nullable=False)
+    model_name = Column(String(50), nullable=True)
+    computed_at = Column(DateTime(timezone=True), nullable=True)
+    details = Column(String, nullable=True)  # JSON string for SQLite compatibility
+
 
 # Helper function to get DB session
 def get_db():
@@ -82,9 +127,6 @@ def get_db():
     finally:
         db.close()
 
-# -------------------------------------------------------------
-# Spatial Join Fallback: Point-in-Polygon Ray Casting Algorithm
-# -------------------------------------------------------------
 _cached_geojson = None
 
 def load_geojson_zones():
@@ -126,7 +168,7 @@ def get_zone_for_coordinates(lat, lon, db):
     2. If using SQLite, falls back to a pure-python ray casting check.
     """
     is_postgres = not DATABASE_URL.startswith("sqlite")
-    
+
     if is_postgres:
         try:
             # Query PostGIS
@@ -140,7 +182,7 @@ def get_zone_for_coordinates(lat, lon, db):
                 return result[0]
         except Exception as e:
             print(f"PostGIS spatial query failed: {e}. Falling back to Python join.")
-            
+
     # Python fallback using GeoJSON
     geojson = load_geojson_zones()
     for feature in geojson.get("features", []):
@@ -149,7 +191,7 @@ def get_zone_for_coordinates(lat, lon, db):
         coords = feature["geometry"]["coordinates"][0]
         if point_in_polygon(lon, lat, coords):
             return zone_name
-            
+
     return None
 
 def init_sqlite_db():
@@ -159,3 +201,7 @@ def init_sqlite_db():
     if DATABASE_URL.startswith("sqlite"):
         Base.metadata.create_all(bind=engine)
         print("SQLite Database tables initialized.")
+
+def is_postgres():
+    """Helper to check if we're connected to PostgreSQL."""
+    return not DATABASE_URL.startswith("sqlite")
