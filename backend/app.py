@@ -1,8 +1,10 @@
 import os
 import json
 from datetime import datetime
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pathlib import Path
 
 from backend.config import APP_NAME, DEBUG
@@ -135,8 +137,15 @@ def startup_event():
     finally:
         db.close()
 
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+@app.get("/health")
+def health_check():
+    """Health check endpoint for monitoring."""
+    return {
+        "status": "ok",
+        "timestamp": datetime.utcnow().isoformat(),
+        "database": "connected",
+        "ml_service": "connected"
+    }
 
 # Serve built frontend assets if they exist
 dist_path = Path(__file__).resolve().parent.parent / "traffic-dashboard" / "dist"
@@ -145,9 +154,10 @@ if dist_path.exists():
 
     @app.get("/{catchall:path}")
     def read_index(catchall: str):
-        # Ignore API docs and system routes to let FastAPI process them
-        if catchall.startswith("docs") or catchall.startswith("redoc") or catchall.startswith("openapi.json") or catchall.startswith("health"):
-            return None
+        # Ignore API docs and system routes to let FastAPI process them natively
+        if catchall.startswith("docs") or catchall.startswith("redoc") or catchall.startswith("openapi.json"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404)
         return FileResponse(str(dist_path / "index.html"))
 else:
     @app.get("/")
@@ -174,12 +184,3 @@ else:
             }
         }
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint for monitoring."""
-    return {
-        "status": "ok",
-        "timestamp": datetime.utcnow().isoformat(),
-        "database": "connected",
-        "ml_service": "connected"
-    }
