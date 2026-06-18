@@ -18,11 +18,28 @@ function ForecastPanel() {
 
   const corridors = [
     "Mysore Road",
-    "Outer Ring Road",
-    "Silk Board Junction",
+    "Bellary Road 1",
+    "Tumkur Road",
+    "Bellary Road 2",
+    "Hosur Road",
+    "ORR North 1",
+    "Old Madras Road",
+    "Magadi Road",
+    "ORR East 1",
+    "ORR North 2",
+    "Bannerghatta Road",
+    "ORR East 2",
+    "West of Chord Road",
+    "ORR West 1",
+    "CBD 2",
+    "Hennur Main Road",
+    "IRR(Thanisandra road)",
+    "Varthur Road",
+    "Old Airport Road",
     "MG Road",
     "Indiranagar 100 Feet Rd",
-    "Bannerghatta Road"
+    "Silk Board Junction",
+    "Outer Ring Road"
   ];
 
   const eventTypes = [
