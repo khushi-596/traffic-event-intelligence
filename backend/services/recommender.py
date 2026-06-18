@@ -39,6 +39,92 @@ def load_historical_data():
             
     return _historical_planned, _historical_unplanned
 
+def load_historical_candidates(db):
+    """
+    Loads candidate events for similarity search from the database.
+    If database query fails or is empty, falls back to static CSVs.
+    """
+    if db is not None:
+        try:
+            from backend.database import EventModel
+            events = db.query(EventModel).all()
+            if events:
+                records = []
+                for e in events:
+                    start_dt = e.start_datetime
+                    
+                    # Safe derived feature calculations
+                    h = getattr(e, "hour_of_day", None)
+                    if h is None and start_dt:
+                        h = start_dt.hour
+                    h = h or 0
+                    
+                    d = getattr(e, "day_of_week", None)
+                    if d is None and start_dt:
+                        d = start_dt.weekday()
+                    d = d or 0
+                    
+                    w = getattr(e, "is_weekend", None)
+                    if w is None:
+                        w = d >= 5
+                        
+                    pf = getattr(e, "planned_flag", None)
+                    if pf is None:
+                        pf = e.event_type.lower() == "planned"
+                        
+                    ph = getattr(e, "is_peak_hour", None)
+                    if ph is None:
+                        ph = (8 <= h <= 11) or (17 <= h <= 20)
+                        
+                    records.append({
+                        "id": e.id,
+                        "event_type": e.event_type,
+                        "latitude": e.latitude,
+                        "longitude": e.longitude,
+                        "endlatitude": e.endlatitude,
+                        "endlongitude": e.endlongitude,
+                        "address": e.address,
+                        "end_address": e.end_address,
+                        "event_cause": e.event_cause,
+                        "requires_road_closure": e.requires_road_closure,
+                        "start_datetime": e.start_datetime,
+                        "end_datetime": e.end_datetime,
+                        "status": e.status,
+                        "direction": e.direction,
+                        "description": e.description,
+                        "veh_type": e.veh_type,
+                        "veh_no": e.veh_no,
+                        "corridor": e.corridor,
+                        "priority": e.priority,
+                        "police_station": e.police_station,
+                        "resolved_at_address": e.resolved_at_address,
+                        "resolved_at_latitude": e.resolved_at_latitude,
+                        "resolved_at_longitude": e.resolved_at_longitude,
+                        "closed_datetime": e.closed_datetime,
+                        "zone": e.zone,
+                        "junction": e.junction,
+                        "duration_minutes": e.duration_minutes,
+                        "hour_of_day": h,
+                        "day_of_week": d,
+                        "is_weekend": w,
+                        "planned_flag": pf,
+                        "is_peak_hour": ph
+                    })
+                df = pd.DataFrame(records)
+                logger.info(f"Loaded {len(df)} candidates from live database for similarity search.")
+                return df
+        except Exception as e:
+            logger.exception(f"Error loading similarity candidates from DB: {e}")
+            
+    # Fallback: combine planned and unplanned static CSVs
+    planned_df, unplanned_df = load_historical_data()
+    if not planned_df.empty or not unplanned_df.empty:
+        df = pd.concat([planned_df, unplanned_df], ignore_index=True)
+        logger.info(f"Loaded {len(df)} candidates from static CSVs for similarity search.")
+        return df
+        
+    return pd.DataFrame()
+
 def recommend(event_dict: Dict[str, Any], db=None) -> Dict[str, Any]:
     """
     Fulfills Step 6: Similarity-Based Recommendation Engine
@@ -56,18 +142,22 @@ def recommend(event_dict: Dict[str, Any], db=None) -> Dict[str, Any]:
         "planned_flag", "is_peak_hour"
     ]
     
-    # Load historical datasets
-    planned_df, unplanned_df = load_historical_data()
+    # Load candidate events (live from DB or static fallback)
+    candidates_df = load_historical_candidates(db)
     
-    # Determine which subset to search
+    # Determine which subset to search (planned vs unplanned)
     is_planned = engineered.get("planned_flag", 0) == 1
-    hist_df = planned_df if is_planned else unplanned_df
     
-    # Fallback to the other dataset if one is empty
-    if hist_df.empty:
-        hist_df = unplanned_df if not unplanned_df.empty else planned_df
+    if not candidates_df.empty:
+        # Filter candidates based on planned_flag
+        # Ensure planned_flag matches
+        candidate_df = candidates_df[candidates_df["planned_flag"] == (1 if is_planned else 0)].copy()
+        if candidate_df.empty:
+            candidate_df = candidates_df.copy()
+    else:
+        candidate_df = pd.DataFrame()
         
-    if hist_df.empty:
+    if candidate_df.empty:
         # If both are empty, return baseline empty recommendations
         return {
             "predicted_priority": predictions["predicted_priority"],
@@ -79,7 +169,7 @@ def recommend(event_dict: Dict[str, Any], db=None) -> Dict[str, Any]:
         }
         
     # Copy candidates to filter
-    candidate_df = hist_df.copy()
+    candidate_df = candidate_df.copy()
     
     # Clean and filter by cause if possible
     cause = str(event_dict.get("event_cause", "")).lower().strip()
@@ -170,7 +260,7 @@ def recommend(event_dict: Dict[str, Any], db=None) -> Dict[str, Any]:
             similar_past.append(item)
             
     except Exception as e:
-        logger.error(f"Error during recommendation similarity search: {e}")
+        logger.exception(f"Error during recommendation similarity search: {e}")
         # Fallback recommendations if fit/transform fails
         recommended_station = event_dict.get("police_station") or "Central Traffic Control"
         

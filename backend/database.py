@@ -196,11 +196,10 @@ def get_zone_for_coordinates(lat, lon, db):
 
 def init_sqlite_db():
     """
-    Create SQLite tables if database is SQLite and tables do not exist.
+    Create database tables if they do not exist.
     """
-    if DATABASE_URL.startswith("sqlite"):
-        Base.metadata.create_all(bind=engine)
-        print("SQLite Database tables initialized.")
+    Base.metadata.create_all(bind=engine)
+    print("Database tables initialized.")
 
 def is_postgres():
     """Helper to check if we're connected to PostgreSQL."""

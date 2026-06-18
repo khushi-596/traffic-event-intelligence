@@ -33,7 +33,7 @@ def load_priority_preprocessor():
                 _preprocessor = joblib.load(path)
                 logger.info("Successfully loaded feature_encoder.pkl")
             except Exception as e:
-                logger.error(f"Error loading feature_encoder.pkl: {e}")
+                logger.exception(f"Error loading feature_encoder.pkl: {e}")
         else:
             logger.warning("feature_encoder.pkl not found")
     return _preprocessor
@@ -54,7 +54,7 @@ def load_knn_encoder():
                 _knn_encoder = joblib.load(path)
                 logger.info(f"Successfully loaded K-NN encoder from {path.name}")
             except Exception as e:
-                logger.error(f"Error loading K-NN encoder: {e}")
+                logger.exception(f"Error loading K-NN encoder: {e}")
         else:
             logger.warning("No encoder found for K-NN recommendation engine")
     return _knn_encoder

@@ -35,6 +35,13 @@ def create_event(payload: EventCreate, db: Session = Depends(get_db)):
         priority = "Low"
         duration_minutes = 60.0
         
+    start_dt = event_dict.get("start_datetime")
+    h = start_dt.hour if start_dt else 0
+    d = start_dt.weekday() if start_dt else 0
+    w = d >= 5
+    pf = event_dict.get("event_type", "").lower() == "planned"
+    ph = (8 <= h <= 11) or (17 <= h <= 20)
+
     # 3. Save to database
     db_event = EventModel(
         id=event_id,
@@ -58,7 +65,12 @@ def create_event(payload: EventCreate, db: Session = Depends(get_db)):
         police_station=event_dict.get("police_station"),
         junction=event_dict.get("junction"),
         zone=zone,
-        priority=priority
+        priority=priority,
+        duration_minutes=duration_minutes,
+        hour_of_day=h,
+        day_of_week=d,
+        is_weekend=w,
+        planned_flag=pf
     )
     
     # SQLite/Postgres compatibility: set spatial geom column if using Postgres
@@ -80,7 +92,7 @@ def get_events(limit: int = 100, db: Session = Depends(get_db)):
     resp_list = []
     for e in events:
         resp = EventResponse.from_orm(e)
-        resp.duration_minutes = None
+        resp.duration_minutes = e.duration_minutes
         resp_list.append(resp)
     return resp_list
 
@@ -93,5 +105,5 @@ def get_event(event_id: str, db: Session = Depends(get_db)):
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     resp = EventResponse.from_orm(event)
-    resp.duration_minutes = None
+    resp.duration_minutes = event.duration_minutes
     return resp
