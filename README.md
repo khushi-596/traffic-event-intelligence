@@ -28,6 +28,7 @@ Gridlock Bengaluru is a real-time predictive traffic management, dispatch, and r
    * Predicts clearance duration (minutes) using an XGBoost Regressor.
 4. **Similarity-Based Recommendation Engine**:
    * Finds the top 5 nearest historical analogues using `NearestNeighbors` (cosine similarity) to suggest police stations, manpower bands, and diversion routes.
+   * Runs dynamically on live database records (PostgreSQL/SQLite) so that any newly logged events instantly become search candidates for future simulations.
 5. **Post-Event Learning Loop**:
    * Tracks predictions vs. actual clearance times, calculates rolling MAE, and triggers on-demand model retraining.
 
