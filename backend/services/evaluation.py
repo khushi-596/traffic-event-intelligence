@@ -102,9 +102,19 @@ def compute_classification_metrics() -> Dict[str, Any]:
         if df.empty or "actual_priority" not in df.columns:
             return {"message": "Insufficient prediction log data"}
 
-        # Map priorities to binary
-        df["actual_binary"] = df["actual_priority"].str.lower().str.strip().map({"high": 1, "low": 0})
-        df["pred_binary"] = df["predicted_priority"].str.lower().str.strip().map({"high": 1, "low": 0})
+        # Map priorities to binary safely
+        def map_priority(val):
+            if pd.isna(val):
+                return np.nan
+            val_str = str(val).strip().lower()
+            if val_str in ("high", "1", "1.0"):
+                return 1
+            if val_str in ("low", "0", "0.0"):
+                return 0
+            return np.nan
+
+        df["actual_binary"] = df["actual_priority"].apply(map_priority)
+        df["pred_binary"] = df["predicted_priority"].apply(map_priority)
 
         # Remove NaN
         mask = df["actual_binary"].notna() & df["pred_binary"].notna()
