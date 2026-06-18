@@ -1,0 +1,6 @@
+Rows: 8170
+Columns: 44
+Duplicate Rows Removed: 0
+Negative Duration Rows Removed: 3
+Missing Priority After Cleaning: 0
+Unknown Zone Count: 37

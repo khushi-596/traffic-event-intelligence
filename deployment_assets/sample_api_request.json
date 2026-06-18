@@ -1,0 +1,11 @@
+{
+    "event_cause": "Procession",
+    "event_type": "Planned",
+    "corridor": "Mysore Road",
+    "zone": "West Zone",
+    "hour_of_day": 19,
+    "day_of_week": 5,
+    "requires_road_closure": 1,
+    "planned_flag": 1,
+    "is_peak_hour": 1
+}
