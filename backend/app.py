@@ -150,15 +150,15 @@ def health_check():
 # Serve built frontend assets if they exist
 dist_path = Path(__file__).resolve().parent.parent / "traffic-dashboard" / "dist"
 if dist_path.exists():
-    app.mount("/assets", StaticFiles(directory=str(dist_path / "assets")), name="assets")
+    class SPAStaticFiles(StaticFiles):
+        async def get_response(self, path: str, scope):
+            try:
+                return await super().get_response(path, scope)
+            except Exception:
+                # Fall back to index.html for client-side routing (SPA)
+                return await super().get_response("index.html", scope)
 
-    @app.get("/{catchall:path}")
-    def read_index(catchall: str):
-        # Ignore API docs and system routes to let FastAPI process them natively
-        if catchall.startswith("docs") or catchall.startswith("redoc") or catchall.startswith("openapi.json"):
-            from fastapi import HTTPException
-            raise HTTPException(status_code=404)
-        return FileResponse(str(dist_path / "index.html"))
+    app.mount("/", SPAStaticFiles(directory=str(dist_path), html=True), name="static")
 else:
     @app.get("/")
     def read_root():
