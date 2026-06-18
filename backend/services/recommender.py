@@ -133,6 +133,8 @@ def recommend(event_dict: Dict[str, Any], db=None) -> Dict[str, Any]:
         avg_dur = neighbors["duration_minutes"].dropna().mean() if "duration_minutes" in neighbors.columns else np.nan
         if pd.isna(avg_dur):
             avg_dur = predictions["predicted_duration_minutes"]
+        else:
+            avg_dur = max(avg_dur, predictions["predicted_duration_minutes"])
             
         if avg_dur < 60:
             manpower = "Low"
@@ -171,7 +173,15 @@ def recommend(event_dict: Dict[str, Any], db=None) -> Dict[str, Any]:
         logger.error(f"Error during recommendation similarity search: {e}")
         # Fallback recommendations if fit/transform fails
         recommended_station = event_dict.get("police_station") or "Central Traffic Control"
-        manpower = "Medium"
+        
+        avg_dur = predictions.get("predicted_duration_minutes", 0)
+        if avg_dur < 60:
+            manpower = "Low"
+        elif avg_dur < 180:
+            manpower = "Medium"
+        else:
+            manpower = "High"
+            
         suggested_diversion = "Use alternative routes."
         similar_past = []
         

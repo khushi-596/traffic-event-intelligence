@@ -1,7 +1,34 @@
+import { useState, useEffect } from "react";
 import Modal from "./Modal";
+import ResolutionFeedbackModal from "./ResolutionFeedbackModal";
 
-function EventDetailsModal({ isOpen, onClose, event }) {
+function EventDetailsModal({ isOpen, onClose, event, onFeedbackSubmit }) {
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // Reset state when modal opens with a new event
+  useEffect(() => {
+    if (isOpen) {
+      setShowFeedback(false);
+    }
+  }, [isOpen, event]);
+
   if (!event) return null;
+
+  if (showFeedback) {
+    return (
+      <ResolutionFeedbackModal 
+        isOpen={isOpen} 
+        onClose={() => { setShowFeedback(false); onClose(); }} 
+        event={event} 
+        onFeedbackSubmit={() => {
+          setShowFeedback(false);
+          if (onFeedbackSubmit) onFeedbackSubmit();
+        }}
+      />
+    );
+  }
+
+  // console.log("Selected Event:", event);
 
   const getPriorityBadgeStyles = (priority) => {
     switch (priority?.toLowerCase()) {
@@ -21,7 +48,12 @@ function EventDetailsModal({ isOpen, onClose, event }) {
 
   // Mock additional data matching the requirements
   const mockAssignedStation = event.assigned_station || `${event.corridor.split(" ")[0] || "Central"} Traffic Police Station`;
-  const mockEstimatedDuration = event.estimated_duration || "45 - 90 Minutes";
+  
+  const estimatedDuration =
+    event.predicted_duration ??
+    event.estimated_duration ??
+    "Unknown Duration";
+
   const mockRecommendedManpower = event.manpower_recommended || "6 Officers, 2 Tow Trucks";
 
   return (
@@ -72,7 +104,7 @@ function EventDetailsModal({ isOpen, onClose, event }) {
 
           <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "8px", borderBottom: "1px solid #e2e8f0" }}>
             <span style={{ fontSize: "13px", color: "var(--text-secondary)" }}>Estimated Duration</span>
-            <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{mockEstimatedDuration}</strong>
+            <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{estimatedDuration}</strong>
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", paddingBottom: "8px", borderBottom: "1px solid #e2e8f0" }}>
@@ -86,26 +118,48 @@ function EventDetailsModal({ isOpen, onClose, event }) {
           </div>
         </div>
 
-        {/* Action Button */}
-        <button 
-          onClick={onClose} 
-          style={{
-            background: "var(--bg-nav)",
-            color: "white",
-            border: "none",
-            padding: "10px 16px",
-            fontSize: "13px",
-            fontWeight: 600,
-            borderRadius: "4px",
-            cursor: "pointer",
-            marginTop: "8px",
-            transition: "background 0.2s"
-          }}
-          onMouseOver={(e) => e.currentTarget.style.background = "#1e293b"}
-          onMouseOut={(e) => e.currentTarget.style.background = "var(--bg-nav)"}
-        >
-          Acknowledge Dispatch
-        </button>
+        {/* Action Buttons */}
+        <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+          <button 
+            onClick={onClose} 
+            style={{
+              flex: 1,
+              background: "transparent",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border-color)",
+              padding: "10px 16px",
+              fontSize: "13px",
+              fontWeight: 600,
+              borderRadius: "4px",
+              cursor: "pointer",
+              transition: "background 0.2s"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.background = "#f1f5f9"}
+            onMouseOut={(e) => e.currentTarget.style.background = "transparent"}
+          >
+            Acknowledge Dispatch
+          </button>
+
+          <button 
+            onClick={() => setShowFeedback(true)} 
+            style={{
+              flex: 1,
+              background: "var(--severity-safe)",
+              color: "white",
+              border: "none",
+              padding: "10px 16px",
+              fontSize: "13px",
+              fontWeight: 600,
+              borderRadius: "4px",
+              cursor: "pointer",
+              transition: "opacity 0.2s"
+            }}
+            onMouseOver={(e) => e.currentTarget.style.opacity = "0.9"}
+            onMouseOut={(e) => e.currentTarget.style.opacity = "1"}
+          >
+            Resolve Incident
+          </button>
+        </div>
       </div>
     </Modal>
   );

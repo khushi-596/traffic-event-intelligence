@@ -1,17 +1,54 @@
 import { useState, useEffect } from "react";
 import { FaServer, FaBrain, FaDatabase, FaCircle } from "react-icons/fa";
+import { getHealth } from "../services/api";
 
 function SystemStatus() {
   const [timestamp, setTimestamp] = useState(new Date().toLocaleTimeString());
+  const [health, setHealth] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const fetchHealth = async () => {
+    try {
+      const res = await getHealth();
+      setHealth(res.data);
+      setError(null);
+    } catch (err) {
+      console.error("Health check failed:", err);
+      setError("Telemetry connection lost");
+      setHealth(null);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const timer = setInterval(() => {
+    const statusTimer = setInterval(() => {
       setTimestamp(new Date().toLocaleTimeString());
     }, 5000);
-    return () => clearInterval(timer);
+
+    const healthTimer = setInterval(fetchHealth, 10000);
+
+    const initialTimer = setTimeout(() => {
+      fetchHealth();
+    }, 0);
+
+    return () => {
+      clearInterval(statusTimer);
+      clearInterval(healthTimer);
+      clearTimeout(initialTimer);
+    };
   }, []);
 
-  const getStatusBadge = (status) => {
+  const getStatusBadge = (status, name) => {
+    if (status === "online" && name === "Global Operations Mode") {
+      return {
+        bg: "#d1fae5",
+        color: "var(--severity-safe)",
+        border: "#6ee7b7",
+        label: "LIVE ACTIVE"
+      };
+    }
     switch (status) {
       case "online":
         return {
@@ -20,12 +57,12 @@ function SystemStatus() {
           border: "#6ee7b7",
           label: "CONNECTED"
         };
-      case "mock":
+      case "loading":
         return {
-          bg: "#fef3c7",
-          color: "var(--severity-warning)",
-          border: "#fcd34d",
-          label: "MOCK ACTIVE"
+          bg: "#f8fafc",
+          color: "var(--text-secondary)",
+          border: "var(--border-color)",
+          label: "CHECKING..."
         };
       case "offline":
       default:
@@ -39,10 +76,26 @@ function SystemStatus() {
   };
 
   const systems = [
-    { name: "Backend Dispatch API", status: "online", icon: <FaServer /> },
-    { name: "ML Prediction Service", status: "online", icon: <FaBrain /> },
-    { name: "PostGIS Incident DB", status: "online", icon: <FaDatabase /> },
-    { name: "Global Operations Mode", status: "mock", icon: <FaCircle /> }
+    { 
+      name: "Backend Dispatch API", 
+      status: loading && !health ? "loading" : (health?.status === "ok" ? "online" : "offline"), 
+      icon: <FaServer /> 
+    },
+    { 
+      name: "ML Prediction Service", 
+      status: loading && !health ? "loading" : (health?.ml_service === "connected" ? "online" : "offline"), 
+      icon: <FaBrain /> 
+    },
+    { 
+      name: "PostGIS Incident DB", 
+      status: loading && !health ? "loading" : (health?.database === "connected" ? "online" : "offline"), 
+      icon: <FaDatabase /> 
+    },
+    { 
+      name: "Global Operations Mode", 
+      status: loading && !health ? "loading" : (health?.status === "ok" && health?.database === "connected" && health?.ml_service === "connected" ? "online" : "offline"), 
+      icon: <FaCircle /> 
+    }
   ];
 
   return (
@@ -56,7 +109,7 @@ function SystemStatus() {
     }}>
       <div style={{ display: "flex", gap: "24px", flexWrap: "wrap" }}>
         {systems.map((sys, idx) => {
-          const badge = getStatusBadge(sys.status);
+          const badge = getStatusBadge(sys.status, sys.name);
           return (
             <div key={idx} style={{
               display: "flex",
@@ -87,11 +140,11 @@ function SystemStatus() {
       </div>
       <div style={{
         fontSize: "12px",
-        color: "var(--text-secondary)",
+        color: error ? "var(--severity-risk)" : "var(--text-secondary)",
         fontWeight: 500,
         letterSpacing: "0.2px"
       }}>
-        Telemetry Updated: <strong>{timestamp}</strong>
+        {error ? `⚠️ ${error}` : `Telemetry Updated: `}<strong>{timestamp}</strong>
       </div>
     </div>
   );

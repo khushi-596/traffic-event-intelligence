@@ -1,10 +1,10 @@
 import { useState } from "react";
-import API from "../services/api";
+import { postForecast } from "../services/api";
 import LoadingSpinner from "./LoadingSpinner";
 import ErrorState from "./ErrorState";
 import { FaClock, FaUsers, FaExclamationTriangle, FaRoute, FaArrowRight, FaPlay } from "react-icons/fa";
 
-const USE_MOCK = true; // flip to false once live endpoints are active
+const USE_MOCK = false; // flip to false once live endpoints are active
 
 function ForecastPanel() {
   const [corridor, setCorridor] = useState("Mysore Road");
@@ -43,53 +43,59 @@ function ForecastPanel() {
 
     try {
       if (USE_MOCK) {
-        // Simulate network delay
+        // Fallback simulation mode
         await new Promise((r) => setTimeout(r, 1000));
-        
-        // Dynamically tailor the mock response to the user's selections
-        let severity = "Medium";
-        if (["waterlogging", "accident", "procession", "rally / protest"].includes(eventType.toLowerCase())) {
-          severity = "High";
-        }
-        
-        let manpower = 8;
-        if (severity === "High") {
-          manpower = 12;
-        } else if (severity === "Critical") {
-          manpower = 16;
-        }
-
-        let diversion_routes = ["Route via secondary link roads", "Follow local traffic signs"];
-        if (corridor === "Mysore Road") {
-          diversion_routes = ["Route via Kengeri Ring Road", "Route via Bangalore-Mysore Highway Bypass"];
-        } else if (corridor === "Silk Board Junction") {
-          diversion_routes = ["Route via HSR Layout 5th Main", "Route via BTM Layout Ring Road"];
-        } else if (corridor === "Outer Ring Road") {
-          diversion_routes = ["Route via Bellandur Inner Road", "Route via Sarjapur Link Road"];
-        } else if (corridor === "MG Road") {
-          diversion_routes = ["Route via Trinity Junction", "Route via Residency Road Bypass"];
-        }
-
         setForecast({
           event_type: eventType,
           corridor: corridor,
-          severity,
-          congestion_duration_minutes: severity === "High" ? 90 : 60,
-          manpower_recommended: manpower,
-          diversion_routes,
+          severity: "Medium",
+          congestion_duration_minutes: 60,
+          manpower_recommended: "Low",
+          diversion_routes: ["Follow local signage"],
+          recommended_station: "Unknown Traffic Station",
+          similar_past_events: [],
           simulatedAt: `${date} at ${time}`
         });
       } else {
-        const response = await API.post("/forecast", {
+        // Map select categories to model expected keys
+        const MAP_CAUSE_TO_DB = {
+          "Accident": "accident",
+          "Road Blockage": "others",
+          "Traffic Jam": "congestion",
+          "Waterlogging": "water_logging",
+          "Procession": "public_event",
+          "Metro Work": "construction",
+          "Rally / Protest": "others"
+        };
+
+        const event_cause = MAP_CAUSE_TO_DB[eventType] || "others";
+        const event_type = ["procession", "metro work", "rally / protest"].includes(eventType.toLowerCase()) ? "Planned" : "Unplanned";
+        const cleanCorridor = corridor === "Bannerghatta Road" ? "Bannerghata Road" : corridor;
+        const start_datetime = new Date(`${date}T${time}:00`).toISOString();
+
+        const response = await postForecast({
+          event_cause,
+          event_type,
+          corridor: cleanCorridor,
+          requires_road_closure: false,
+          start_datetime
+        });
+
+        const data = response.data;
+        setForecast({
           event_type: eventType,
           corridor: corridor,
-          date,
-          time
+          severity: data.predicted_priority || "Low",
+          congestion_duration_minutes: data.predicted_duration_minutes ? Math.round(data.predicted_duration_minutes) : 60,
+          manpower_recommended: data.manpower_band || "Low",
+          diversion_routes: data.suggested_diversion ? [data.suggested_diversion] : ["No diversion recommended"],
+          recommended_station: data.recommended_station || "Central Traffic Control",
+          similar_past_events: data.similar_past_events || [],
+          simulatedAt: `${date} at ${time}`
         });
-        setForecast(response.data);
       }
     } catch (err) {
-      setError("Prediction server timed out. Check backend connectivity.");
+      setError("Prediction server timed out or returned an error. Check backend connectivity.");
       console.error(err);
     } finally {
       setLoading(false);
@@ -281,7 +287,14 @@ function ForecastPanel() {
                 <FaUsers style={{ marginRight: "6px", color: "var(--text-secondary)" }} />
                 Required Dispatch
               </span>
-              <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{forecast.manpower_recommended} Officers</strong>
+              <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{forecast.manpower_recommended} Band</strong>
+            </div>
+
+            <div className="result-row" style={{ display: "flex", justifyContent: "space-between", borderBottom: "1px solid #e2e8f0", paddingBottom: "6px" }}>
+              <span className="result-label" style={{ color: "var(--text-secondary)", fontSize: "13px" }}>
+                📍 Recommended Station
+              </span>
+              <strong style={{ fontSize: "13px", color: "var(--text-primary)" }}>{forecast.recommended_station}</strong>
             </div>
 
             <div>
@@ -309,6 +322,41 @@ function ForecastPanel() {
                 ))}
               </div>
             </div>
+
+            {forecast.similar_past_events && forecast.similar_past_events.length > 0 && (
+              <div style={{ marginTop: "12px", borderTop: "1px solid var(--border-color)", paddingTop: "12px" }}>
+                <span className="result-label" style={{ display: "block", marginBottom: "8px", fontSize: "13px", color: "var(--text-secondary)", fontWeight: 700 }}>
+                  🔍 Similar Historical Analogue Cases
+                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {forecast.similar_past_events.map((evt, idx) => (
+                    <div key={idx} style={{
+                      backgroundColor: "#f8fafc",
+                      border: "1px solid var(--border-color)",
+                      padding: "8px 12px",
+                      borderRadius: "4px",
+                      fontSize: "12px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center"
+                    }}>
+                      <div>
+                        <strong style={{ color: "var(--text-primary)" }}>{evt.event_cause ? evt.event_cause.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) : "Incident"}</strong>
+                        <span style={{ color: "var(--text-secondary)", marginLeft: "8px" }}>on {evt.corridor || "Unknown"}</span>
+                      </div>
+                      <span style={{
+                        fontSize: "9px",
+                        fontWeight: 700,
+                        padding: "1px 6px",
+                        borderRadius: "3px",
+                        backgroundColor: evt.priority?.toLowerCase() === "high" ? "#fee2e2" : "#fef3c7",
+                        color: evt.priority?.toLowerCase() === "high" ? "var(--severity-risk)" : "var(--severity-warning)"
+                      }}>{evt.priority} ({evt.duration_minutes ? Math.round(evt.duration_minutes) : 60}m)</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

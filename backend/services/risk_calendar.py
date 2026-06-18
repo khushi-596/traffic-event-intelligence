@@ -39,9 +39,8 @@ def get_risk_calendar_data(db=None, corridor_filter: str = None,
             "generated_at": datetime.utcnow().isoformat()
         }
 
-    # Ensure hour_of_day exists
-    if "hour_of_day" not in df.columns:
-        df["hour_of_day"] = pd.to_datetime(df["start_datetime"]).dt.hour
+    # Ensure hour_of_day exists and is populated
+    df["hour_of_day"] = pd.to_datetime(df["start_datetime"]).dt.hour
 
     # Drop rows with null corridor or hour_of_day (essential pivot columns)
     df = df.dropna(subset=["corridor", "hour_of_day"])
@@ -92,8 +91,8 @@ def get_risk_calendar_data(db=None, corridor_filter: str = None,
     for corridor in pivot_ch.index:
         for hour in pivot_ch.columns:
             count = int(pivot_ch.loc[corridor, hour])
-            avg_dur = float(pivot_dur.loc[corridor, hour]) if hour in pivot_dur.columns else 0.0
-            hp_pct = float(pivot_hp.loc[corridor, hour]) if hour in pivot_hp.columns else 0.0
+            avg_dur = float(pivot_dur.loc[corridor, hour]) if (corridor in pivot_dur.index and hour in pivot_dur.columns) else 0.0
+            hp_pct = float(pivot_hp.loc[corridor, hour]) if (corridor in pivot_hp.index and hour in pivot_hp.columns) else 0.0
             if pd.isna(avg_dur):
                 avg_dur = 0.0
             if pd.isna(hp_pct):
@@ -224,9 +223,8 @@ def compute_top_k_hit_rate(db=None, k: int = 5) -> Dict[str, Any]:
             "details": {"message": "Insufficient data for evaluation"}
         }
 
-    # Ensure hour_of_day
-    if "hour_of_day" not in df.columns:
-        df["hour_of_day"] = pd.to_datetime(df["start_datetime"]).dt.hour
+    # Ensure hour_of_day is populated
+    df["hour_of_day"] = pd.to_datetime(df["start_datetime"]).dt.hour
 
     # Drop rows with null corridor or hour_of_day
     df = df.dropna(subset=["corridor", "hour_of_day"])

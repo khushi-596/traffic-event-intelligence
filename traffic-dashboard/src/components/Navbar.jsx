@@ -4,17 +4,15 @@ import { FaTrafficLight } from "react-icons/fa";
 
 function Navbar() {
   const [time, setTime] = useState(new Date().toLocaleTimeString());
-  const [lastUpdated, setLastUpdated] = useState("");
-
-  useEffect(() => {
-    // Generate initial last updated timestamp (e.g., 2 minutes ago)
-    const updateTime = new Date(Date.now() - 120000).toLocaleTimeString([], {
+  const [lastUpdated, setLastUpdated] = useState(() => {
+    return new Date(Date.now() - 120000).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
     });
-    setLastUpdated(updateTime);
+  });
 
+  useEffect(() => {
     const timer = setInterval(() => {
       setTime(new Date().toLocaleTimeString());
     }, 1000);

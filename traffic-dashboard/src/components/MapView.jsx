@@ -1,11 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle, CircleMarker, Tooltip } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import API from "../services/api";
-import { mockEvents } from "../services/mockEvents";
-
-const USE_MOCK = true; // Set to false to swap for a live /events API call later
 
 // Bengaluru center coordinates
 const BENGALURU_CENTER = [12.9716, 77.5946];
@@ -82,40 +78,47 @@ const HEATMAP_POINTS = [
   { coords: [12.99, 77.66], radius: 1300, color: "#10b981" }     // K R Puram (Low)
 ];
 
-function MapView({ onMarkerClick }) {
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
+function MapView({ onMarkerClick, events = [], loading = false, error = null }) {
   // Map layer toggles
   const [showMarkers, setShowMarkers] = useState(true);
   const [showRiskZones, setShowRiskZones] = useState(true);
   const [showCorridors, setShowCorridors] = useState(true);
   const [showHeatmap, setShowHeatmap] = useState(true);
 
-  useEffect(() => {
-    const fetchEvents = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        if (USE_MOCK) {
-          // Simulate network latency
-          await new Promise((resolve) => setTimeout(resolve, 800));
-          setEvents(mockEvents);
-        } else {
-          const response = await API.get("/events");
-          setEvents(response.data);
-        }
-      } catch (err) {
-        console.error("Error fetching traffic events:", err);
-        setError("Failed to load traffic events. Backend may be offline.");
-      } finally {
-        setLoading(false);
-      }
-    };
+  const durationBySeverity = {
+    critical: "180-360 mins",
+    high: "90-180 mins",
+    medium: "45-90 mins",
+    low: "15-45 mins"
+  };
 
-    fetchEvents();
-  }, []);
+  const manpowerBySeverity = {
+    low: "2 Officers",
+    medium: "4 Officers",
+    high: "8 Officers",
+    critical: "12 Officers"
+  };
+
+  // Adapter mapping from backend EventResponse schema to frontend expectations
+  const mappedEvents = events.map((e) => {
+    // Map event_cause strings to friendly display values
+    const causeDisplay = e.event_cause
+      ? e.event_cause.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      : e.event_type;
+
+    return {
+      id: e.id,
+      event_type: causeDisplay || "Traffic Incident",
+      corridor: e.corridor || "Unknown Corridor",
+      lat: e.latitude,
+      lng: e.longitude,
+      status: e.status, // preserve status for active calculation
+      severity: e.priority || "Low",
+      predicted_duration: e.duration_minutes != null ? `${Math.round(e.duration_minutes)} mins` : (durationBySeverity[e.priority?.toLowerCase()] || "Unknown"),
+      manpower_recommended: e.manpower_band ? `${e.manpower_band} Band` : (manpowerBySeverity[e.priority?.toLowerCase()] || "2 Officers"),
+      suggested_diversion: e.suggested_diversion || "No diversion recommended"
+    };
+  });
 
   const getSeverityColor = (severity) => {
     switch (severity?.toLowerCase()) {
@@ -147,8 +150,13 @@ function MapView({ onMarkerClick }) {
     });
   };
 
-  const highRiskCount = events.filter((e) =>
+  const highRiskCount = mappedEvents.filter((e) =>
     ["high", "critical"].includes(e.severity?.toLowerCase())
+  ).length;
+
+  // Active Alerts count only non-closed events. Total Events count everything loaded.
+  const activeCount = mappedEvents.filter(
+    (e) => e.status?.toLowerCase() !== "closed"
   ).length;
 
   return (
@@ -163,8 +171,12 @@ function MapView({ onMarkerClick }) {
       }}>
         <div style={{ display: "flex", gap: "24px" }}>
           <div style={{ fontSize: "13px" }}>
+            <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>Total Events: </span>
+            <strong style={{ color: "var(--text-primary)" }}>{mappedEvents.length} Loaded</strong>
+          </div>
+          <div style={{ fontSize: "13px" }}>
             <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>Active Alerts: </span>
-            <strong style={{ color: "var(--accent-primary)" }}>{events.length} Active</strong>
+            <strong style={{ color: "var(--accent-primary)" }}>{activeCount} Active</strong>
           </div>
           <div style={{ fontSize: "13px" }}>
             <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>High/Critical Risk: </span>
@@ -316,7 +328,7 @@ function MapView({ onMarkerClick }) {
           ))}
 
           {/* Incident Markers Layer */}
-          {showMarkers && events.map((event) => (
+          {showMarkers && mappedEvents.map((event) => (
             <Marker
               key={event.id}
               position={[event.lat, event.lng]}

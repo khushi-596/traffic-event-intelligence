@@ -1,27 +1,34 @@
 import { useState } from "react";
 import { FaSearch, FaFilter, FaArrowUp, FaArrowDown } from "react-icons/fa";
-import { mockEvents } from "../services/mockEvents";
+import LoadingSpinner from "./LoadingSpinner";
+import ErrorState from "./ErrorState";
 
-function LiveEventsTable() {
+function LiveEventsTable({ events = [], loading = false, error = null }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [priorityFilter, setPriorityFilter] = useState("all");
   const [sortField, setSortField] = useState("id");
   const [sortDirection, setSortDirection] = useState("asc");
 
-  // Augment mockEvents with status and duration for display
-  const events = mockEvents.map((evt) => {
-    let status = "Active";
-    let duration = "30m";
-    if (evt.id === 1) { status = "Dispatched"; duration = "75m"; }
-    else if (evt.id === 2) { status = "Active"; duration = "45m"; }
-    else if (evt.id === 3) { status = "Monitoring"; duration = "20m"; }
-    else if (evt.id === 4) { status = "Escalated"; duration = "120m"; }
-    else if (evt.id === 5) { status = "Active"; duration = "50m"; }
+  const durationBySeverity = {
+    critical: "180-360 mins",
+    high: "90-180 mins",
+    medium: "45-90 mins",
+    low: "15-45 mins"
+  };
+
+  // Adapt backend EventResponse schema to frontend table requirements
+  const mappedEvents = events.map((evt) => {
+    const causeDisplay = evt.event_cause
+      ? evt.event_cause.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
+      : evt.event_type;
 
     return {
-      ...evt,
-      status,
-      duration
+      id: evt.id,
+      event_type: causeDisplay || "Incident",
+      corridor: evt.corridor || "Unknown Corridor",
+      severity: evt.priority || "Low",
+      status: evt.status ? (evt.status.charAt(0).toUpperCase() + evt.status.slice(1)) : "Active",
+      duration: evt.duration_minutes != null ? `${Math.round(evt.duration_minutes)}m` : (durationBySeverity[evt.priority?.toLowerCase()] || "Unknown")
     };
   });
 
@@ -63,7 +70,7 @@ function LiveEventsTable() {
   };
 
   // Filtering Logic
-  const filteredEvents = events.filter((evt) => {
+  const filteredEvents = mappedEvents.filter((evt) => {
     const matchesSearch = 
       evt.event_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
       evt.corridor.toLowerCase().includes(searchTerm.toLowerCase());
@@ -87,7 +94,7 @@ function LiveEventsTable() {
   });
 
   return (
-    <div className="glass-panel" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div className="glass-panel dispatch-log-container" style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "16px", maxHeight: "500px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "12px" }}>
         <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>Incident Dispatch Log</h3>
         
@@ -139,71 +146,80 @@ function LiveEventsTable() {
         </div>
       </div>
 
-      {/* Responsive Table wrapper */}
-      <div style={{ overflowX: "auto", border: "1px solid var(--border-color)", borderRadius: "4px" }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
-          <thead>
-            <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid var(--border-color)" }}>
-              {["event_type", "corridor", "severity", "status", "duration"].map((field) => {
-                const label = field.replace("_", " ").toUpperCase();
-                const isCurrent = sortField === field;
-                return (
-                  <th 
-                    key={field} 
-                    onClick={() => handleSort(field)}
-                    style={{
-                      padding: "10px 16px",
-                      fontWeight: 700,
-                      color: "var(--text-secondary)",
-                      fontSize: "11px",
-                      cursor: "pointer",
-                      whiteSpace: "nowrap"
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      {label}
-                      {isCurrent && (sortDirection === "asc" ? <FaArrowUp style={{ fontSize: "8px" }} /> : <FaArrowDown style={{ fontSize: "8px" }} />)}
-                    </div>
-                  </th>
-                );
-              })}
-            </tr>
-          </thead>
-          <tbody>
-            {sortedEvents.length > 0 ? (
-              sortedEvents.map((evt) => (
-                <tr key={evt.id} style={{ borderBottom: "1px solid var(--border-color)", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"} onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
-                  <td style={{ padding: "12px 16px", fontWeight: 700, color: "var(--text-primary)" }}>{evt.event_type}</td>
-                  <td style={{ padding: "12px 16px", color: "var(--text-secondary)", fontWeight: 500 }}>{evt.corridor}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span style={{
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      padding: "2px 8px",
-                      borderRadius: "3px",
-                      display: "inline-block",
-                      ...getPriorityColor(evt.severity)
-                    }}>
-                      {evt.severity}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px 16px", ...getStatusStyle(evt.status) }}>
-                    {evt.status}
-                  </td>
-                  <td style={{ padding: "12px 16px", color: "var(--text-secondary)", fontWeight: 600 }}>{evt.duration}</td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} style={{ padding: "24px", textAlign: "center", color: "var(--text-secondary)" }}>
-                  No active traffic incidents match your search query.
-                </td>
+      {loading && <LoadingSpinner message="Synchronizing incident logs..." />}
+      {error && <ErrorState message={error} />}
+
+      {!loading && !error && (
+        <div style={{ flex: 1, minHeight: 0, overflowX: "auto", overflowY: "auto", border: "1px solid var(--border-color)", borderRadius: "4px" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+            <thead>
+              <tr style={{ backgroundColor: "#f8fafc", borderBottom: "1px solid var(--border-color)" }}>
+                {["event_type", "corridor", "severity", "status", "duration"].map((field) => {
+                  const label = field.replace("_", " ").toUpperCase();
+                  const isCurrent = sortField === field;
+                  return (
+                    <th 
+                      key={field} 
+                      onClick={() => handleSort(field)}
+                      style={{
+                        position: "sticky",
+                        top: 0,
+                        zIndex: 10,
+                        backgroundColor: "#f8fafc",
+                        borderBottom: "1px solid var(--border-color)",
+                        padding: "10px 16px",
+                        fontWeight: 700,
+                        color: "var(--text-secondary)",
+                        fontSize: "11px",
+                        cursor: "pointer",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {label}
+                        {isCurrent && (sortDirection === "asc" ? <FaArrowUp style={{ fontSize: "8px" }} /> : <FaArrowDown style={{ fontSize: "8px" }} />)}
+                      </div>
+                    </th>
+                  );
+                })}
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {sortedEvents.length > 0 ? (
+                sortedEvents.map((evt) => (
+                  <tr key={evt.id} style={{ borderBottom: "1px solid var(--border-color)", transition: "background 0.2s" }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = "#f8fafc"} onMouseOut={(e) => e.currentTarget.style.backgroundColor = "transparent"}>
+                    <td style={{ padding: "12px 16px", fontWeight: 700, color: "var(--text-primary)" }}>{evt.event_type}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-secondary)", fontWeight: 500 }}>{evt.corridor}</td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <span style={{
+                        fontSize: "10px",
+                        fontWeight: 700,
+                        textTransform: "uppercase",
+                        padding: "2px 8px",
+                        borderRadius: "3px",
+                        display: "inline-block",
+                        ...getPriorityColor(evt.severity)
+                      }}>
+                        {evt.severity}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px 16px", ...getStatusStyle(evt.status) }}>
+                      {evt.status}
+                    </td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-secondary)", fontWeight: 600 }}>{evt.duration}</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} style={{ padding: "24px", textAlign: "center", color: "var(--text-secondary)" }}>
+                    No active traffic incidents match your search query.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
