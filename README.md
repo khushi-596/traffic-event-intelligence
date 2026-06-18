@@ -3,7 +3,7 @@
 Gridlock Bengaluru is a real-time predictive traffic management, dispatch, and resourcing recommendation platform designed for the Astram AI Traffic pipeline. The platform integrates machine learning forecasting, spatial risk calendar heatmaps, nearest-neighbor historical incident recommendations, and an active post-event closed learning loop.
 
 ## 🚀 Live Link
-* **Live Deployment URL**: [Click here to visit Gridlock Bengaluru](https://YOUR-RENDER-URL.onrender.com)
+* **Live Deployment URL**: [Click here to visit Gridlock Bengaluru](https://traffic-event-intelligence.onrender.com)
 
 ---
 
