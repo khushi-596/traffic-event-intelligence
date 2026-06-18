@@ -77,11 +77,10 @@ def get_events(limit: int = 100, db: Session = Depends(get_db)):
     Retrieves the list of logged events.
     """
     events = db.query(EventModel).order_by(EventModel.start_datetime.desc()).limit(limit).all()
-    # Add dummy duration_minutes for display
     resp_list = []
     for e in events:
         resp = EventResponse.from_orm(e)
-        resp.duration_minutes = 64.0  # Median fallback
+        resp.duration_minutes = None
         resp_list.append(resp)
     return resp_list
 
@@ -94,5 +93,5 @@ def get_event(event_id: str, db: Session = Depends(get_db)):
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
     resp = EventResponse.from_orm(event)
-    resp.duration_minutes = 64.0
+    resp.duration_minutes = None
     return resp

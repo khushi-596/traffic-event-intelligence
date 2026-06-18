@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
 
 from backend.config import APP_NAME, DEBUG
-from backend.database import init_sqlite_db, SessionLocal, ZoneModel, get_db
+from backend.database import init_sqlite_db, SessionLocal, ZoneModel, EventModel, get_db
 from backend.routes import forecast, events, recommendations, feedback
 from backend.routes import risk_calendar as risk_calendar_route
 from backend.routes import evaluation as evaluation_route
@@ -86,6 +86,50 @@ def startup_event():
                 logger.info(f"Successfully seeded {len(geojson['features'])} zones on startup!")
             else:
                 logger.warning(f"bengaluru_zones.geojson not found at {geojson_path}. Startup seed skipped.")
+        
+        # Auto-seed events if they are empty
+        event_count = db.query(EventModel).count()
+        if event_count == 0:
+            logger.info("Events table is empty. Auto-seeding from cleaned_events.csv...")
+            csv_path = Path(__file__).resolve().parent.parent / "data" / "processed" / "cleaned_events.csv"
+            if csv_path.exists():
+                import pandas as pd
+                df = pd.read_csv(csv_path)
+                df = df.dropna(subset=["start_datetime"])
+                df = df.where(pd.notnull(df), None).head(100)  # Seed 100 events for demo
+                for _, row in df.iterrows():
+                    start_dt = pd.to_datetime(row["start_datetime"])
+                    end_dt = pd.to_datetime(row["end_datetime"]) if pd.notna(row.get("end_datetime")) else None
+                    
+                    db_event = EventModel(
+                        id=str(row["id"]),
+                        event_type=str(row["event_type"]),
+                        latitude=float(row["latitude"]),
+                        longitude=float(row["longitude"]),
+                        endlatitude=float(row["endlatitude"]) if pd.notna(row.get("endlatitude")) else None,
+                        endlongitude=float(row["endlongitude"]) if pd.notna(row.get("endlongitude")) else None,
+                        address=str(row["address"]) if pd.notna(row.get("address")) else None,
+                        end_address=str(row["end_address"]) if pd.notna(row.get("end_address")) else None,
+                        event_cause=str(row["event_cause"]),
+                        requires_road_closure=bool(row["requires_road_closure"]),
+                        start_datetime=start_dt.to_pydatetime() if hasattr(start_dt, "to_pydatetime") else start_dt,
+                        end_datetime=end_dt.to_pydatetime() if end_dt and hasattr(end_dt, "to_pydatetime") else end_dt,
+                        status=str(row["status"]) if pd.notna(row.get("status")) else "active",
+                        direction=str(row["direction"]) if pd.notna(row.get("direction")) else None,
+                        description=str(row["description"]) if pd.notna(row.get("description")) else None,
+                        veh_type=str(row["veh_type"]) if pd.notna(row.get("veh_type")) else None,
+                        veh_no=str(row["veh_no"]) if pd.notna(row.get("veh_no")) else None,
+                        corridor=str(row["corridor"]) if pd.notna(row.get("corridor")) else None,
+                        priority=str(row["priority"]) if pd.notna(row.get("priority")) else "Low",
+                        police_station=str(row["police_station"]) if pd.notna(row.get("police_station")) else None,
+                        zone=str(row["zone"]) if pd.notna(row.get("zone")) else None,
+                        junction=str(row["junction"]) if pd.notna(row.get("junction")) else None
+                    )
+                    db.add(db_event)
+                db.commit()
+                logger.info(f"Successfully seeded {len(df)} events on startup!")
+            else:
+                logger.warning(f"cleaned_events.csv not found at {csv_path}. Event seeding skipped.")
     except Exception as e:
         logger.error(f"Startup database seeding failed: {e}")
     finally:
@@ -121,5 +165,6 @@ def health_check():
     return {
         "status": "ok",
         "timestamp": datetime.utcnow().isoformat(),
-        "database": "connected"
+        "database": "connected",
+        "ml_service": "connected"
     }
