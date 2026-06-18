@@ -136,7 +136,7 @@ function ForecastPanel() {
 
       {/* Simulation Inputs Form */}
       <form onSubmit={handlePredict} style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <div className="forecast-form-grid">
           <div>
             <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", fontWeight: 700, marginBottom: "4px", textTransform: "uppercase" }}>Incident Type</label>
             <select 
@@ -178,7 +178,7 @@ function ForecastPanel() {
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <div className="forecast-form-grid">
           <div>
             <label style={{ display: "block", fontSize: "11px", color: "var(--text-secondary)", fontWeight: 700, marginBottom: "4px", textTransform: "uppercase" }}>Target Date</label>
             <input 

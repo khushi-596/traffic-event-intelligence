@@ -162,14 +162,8 @@ function MapView({ onMarkerClick, events = [], loading = false, error = null }) 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
       {/* Event stats above map */}
-      <div className="glass-panel" style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "10px 16px",
-        backgroundColor: "var(--bg-secondary)"
-      }}>
-        <div style={{ display: "flex", gap: "24px" }}>
+      <div className="glass-panel map-stats-header">
+        <div className="map-stats-group">
           <div style={{ fontSize: "13px" }}>
             <span style={{ color: "var(--text-secondary)", fontWeight: 600 }}>Total Events: </span>
             <strong style={{ color: "var(--text-primary)" }}>{mappedEvents.length} Loaded</strong>
@@ -183,7 +177,7 @@ function MapView({ onMarkerClick, events = [], loading = false, error = null }) 
             <strong style={{ color: "var(--severity-risk)" }}>{highRiskCount} Active</strong>
           </div>
         </div>
-        <div style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 600 }}>
+        <div className="map-stats-sync" style={{ fontSize: "11px", color: "var(--text-secondary)", fontWeight: 600 }}>
           GIS FEED: <strong style={{ color: "var(--severity-safe)" }}>SYNCHRONIZED</strong>
         </div>
       </div>

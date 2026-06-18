@@ -104,7 +104,7 @@ function PerformanceChart({ feedbackMetrics = [], evaluation = null, loading = f
       {!loading && !error && (
         <>
           {/* KPI Cards */}
-          <div className="metrics-container" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "12px" }}>
+          <div className="metrics-container">
             {modelStats.map((stat, idx) => (
               <div key={idx} className="metric-card" style={{
                 padding: "12px 16px",

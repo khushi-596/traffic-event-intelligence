@@ -166,7 +166,7 @@ function BeforeAfterComparison({ feedbackMetrics = [], loading = false, error = 
                 }}>{badgeText}</span>
               </div>
               
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+              <div className="before-after-grid">
                 {/* Before Card */}
                 <div style={{
                   backgroundColor: "#fef2f2",

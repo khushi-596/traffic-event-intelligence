@@ -1586,4 +1586,124 @@ body::before {
   border-radius: 6px;
 }
 
+/* ==========================================
+   Responsive Overrides & Layout Alignment Enhancements
+   ========================================== */
+
+/* Navbar responsiveness */
+@media (max-width: 900px) {
+  .navbar {
+    flex-direction: column;
+    gap: 16px;
+    align-items: center;
+    text-align: center;
+    padding: 16px;
+  }
+  .nav-controls {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+  }
+  /* Hide standard pipe dividers on mobile to prevent clutter */
+  .nav-controls span {
+    display: none;
+  }
+}
+
+/* System status panel */
+@media (max-width: 768px) {
+  .system-status-panel {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+/* Map stats header */
+.map-stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background-color: var(--bg-secondary);
+}
+.map-stats-group {
+  display: flex;
+  gap: 24px;
+}
+@media (max-width: 768px) {
+  .map-stats-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  .map-stats-group {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+
+/* Dispatch log container & table filter wrapping */
+@media (max-width: 768px) {
+  .dispatch-log-container > div:first-child {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px !important;
+  }
+  .dispatch-log-container select,
+  .dispatch-log-container input {
+    width: 100% !important;
+  }
+}
+
+/* Model Performance & KPIs layout */
+.metrics-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+@media (max-width: 768px) {
+  .metrics-container {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Model Learning Improvement trends */
+.before-after-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .before-after-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Forecast Simulation forms */
+.forecast-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 640px) {
+  .forecast-form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Event details popup */
+.event-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 640px) {
+  .event-details-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
 

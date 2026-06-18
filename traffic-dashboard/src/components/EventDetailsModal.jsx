@@ -77,10 +77,7 @@ function EventDetailsModal({ isOpen, onClose, event, onFeedbackSubmit }) {
         </div>
 
         {/* Detailed Stats */}
-        <div style={{
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "16px",
+        <div className="event-details-grid" style={{
           backgroundColor: "#f8fafc",
           padding: "16px",
           borderRadius: "4px",
