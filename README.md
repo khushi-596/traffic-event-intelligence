@@ -7,6 +7,14 @@ Gridlock Bengaluru is a real-time predictive traffic management, dispatch, and r
 
 ---
 
+## 💻 Tech Stack
+* **Frontend**: React (v19), Vite, Leaflet & React-Leaflet (Map visualization), Recharts (Analytics graphs), Axios.
+* **Backend**: FastAPI (Python ASGI framework), Uvicorn.
+* **Database**: Serverless PostgreSQL (Neon.tech) with PostGIS spatial extension, SQLite (Local development fallback), SQLAlchemy (ORM).
+* **Machine Learning**: XGBoost (Classifier & Regressor), Scikit-Learn (k-Nearest Neighbors similarity engine), Pandas, NumPy.
+
+---
+
 ## 🛠 Architecture & Features
 
 1. **Cleaned Event Datasets & Preprocessing**:

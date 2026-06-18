@@ -60,7 +60,7 @@ class EventModel(Base):
     client_id = Column(Integer, nullable=True)
     created_by_id = Column(String(50), nullable=True)
     last_modified_by_id = Column(String(50), nullable=True)
-    assigned_to_police_id = Column(Integer, nullable=True)
+    assigned_to_police_id = Column(String(50), nullable=True)
     police_station = Column(String(150), nullable=True)
     resolved_at_address = Column(String, nullable=True)
     resolved_at_latitude = Column(Float, nullable=True)

@@ -141,36 +141,28 @@ def load_events_from_csv():
             if col in df.columns:
                 df[col] = df[col].fillna(False).astype(bool)
 
-        # Batch insert
-        batch_size = 500
-        inserted = 0
-
+        # Optimize insertion using pandas to_sql with multi method
         event_columns = [c.name for c in EventModel.__table__.columns]
+        df_db = df[df.columns.intersection(event_columns)].copy()
 
-        for start in range(0, len(df), batch_size):
-            batch = df.iloc[start:start + batch_size]
-            records = []
+        # Fill missing columns with None to ensure full schema alignment
+        for col in event_columns:
+            if col not in df_db.columns:
+                df_db[col] = None
 
-            for _, row in batch.iterrows():
-                record = {}
-                for col in event_columns:
-                    if col in row.index:
-                        val = row[col]
-                        # Handle NaN/NaT
-                        if pd.isna(val):
-                            val = None
-                        record[col] = val
-                    else:
-                        record[col] = None
+        # Convert NaN values to None to match DB nulls
+        df_db = df_db.where(pd.notnull(df_db), None)
 
-                records.append(EventModel(**record))
-
-            db.bulk_save_objects(records)
-            db.commit()
-            inserted += len(records)
-            logger.info(f"  Inserted {inserted}/{len(df)} events...")
-
-        logger.info(f"Successfully loaded {inserted} events into the database.")
+        # Bulk insert using pandas to_sql
+        df_db.to_sql(
+            name="events",
+            con=engine,
+            if_exists="append",
+            index=False,
+            method="multi",
+            chunksize=1000
+        )
+        logger.info(f"Successfully loaded {len(df_db)} events into the database.")
     except Exception as e:
         db.rollback()
         logger.error(f"Event loading failed: {e}")
@@ -197,24 +189,29 @@ def load_prediction_log():
         df = pd.read_csv(log_path)
         logger.info(f"Loading {len(df)} prediction log entries...")
 
-        for _, row in df.iterrows():
-            entry = PredictionLogModel(
-                event_id=str(row.get("event_id", "")),
-                predicted_priority=str(row.get("predicted_priority", "")),
-                actual_priority=str(row.get("actual_priority", "")),
-                priority_correct=bool(row.get("priority_correct", False)),
-                predicted_duration=float(row["predicted_duration"]) if pd.notna(row.get("predicted_duration")) else None,
-                actual_duration=float(row["actual_duration"]) if pd.notna(row.get("actual_duration")) else None,
-                duration_error=float(row["duration_error"]) if pd.notna(row.get("duration_error")) else None,
-                rolling_mae=float(row["rolling_mae"]) if pd.notna(row.get("rolling_mae")) else None,
-                rolling_accuracy=float(row["rolling_accuracy"]) if pd.notna(row.get("rolling_accuracy")) else None,
-            )
-            db.add(entry)
+        # Optimize using pandas to_sql
+        log_columns = [c.name for c in PredictionLogModel.__table__.columns if c.name != "id"]
+        df_db = df[df.columns.intersection(log_columns)].copy()
 
-        db.commit()
-        logger.info(f"Loaded {len(df)} prediction log entries.")
+        # Fill missing columns
+        for col in log_columns:
+            if col not in df_db.columns:
+                df_db[col] = None
+
+        # Convert NaN values to None
+        df_db = df_db.where(pd.notnull(df_db), None)
+
+        # Bulk insert
+        df_db.to_sql(
+            name="prediction_log",
+            con=engine,
+            if_exists="append",
+            index=False,
+            method="multi",
+            chunksize=1000
+        )
+        logger.info(f"Loaded {len(df_db)} prediction log entries.")
     except Exception as e:
-        db.rollback()
         logger.error(f"Prediction log loading failed: {e}")
     finally:
         db.close()

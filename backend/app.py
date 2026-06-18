@@ -135,29 +135,44 @@ def startup_event():
     finally:
         db.close()
 
-@app.get("/")
-def read_root():
-    return {
-        "status": "healthy",
-        "app_name": APP_NAME,
-        "version": "1.1.0",
-        "debug_mode": DEBUG,
-        "timestamp": datetime.utcnow().isoformat(),
-        "endpoints": {
-            "forecast": "/forecast",
-            "risk_calendar": "/risk-calendar",
-            "risk_calendar_top_k": "/risk-calendar/top-k",
-            "events": "/events",
-            "feedback": "/feedback",
-            "feedback_metrics": "/feedback/metrics",
-            "feedback_retrain": "/feedback/retrain",
-            "evaluation": "/evaluation",
-            "evaluation_classification": "/evaluation/classification",
-            "evaluation_regression": "/evaluation/regression",
-            "recommendations": "/recommendations",
-            "docs": "/docs"
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
+# Serve built frontend assets if they exist
+dist_path = Path(__file__).resolve().parent.parent / "traffic-dashboard" / "dist"
+if dist_path.exists():
+    app.mount("/assets", StaticFiles(directory=str(dist_path / "assets")), name="assets")
+
+    @app.get("/{catchall:path}")
+    def read_index(catchall: str):
+        # Ignore API docs and system routes to let FastAPI process them
+        if catchall.startswith("docs") or catchall.startswith("redoc") or catchall.startswith("openapi.json") or catchall.startswith("health"):
+            return None
+        return FileResponse(str(dist_path / "index.html"))
+else:
+    @app.get("/")
+    def read_root():
+        return {
+            "status": "healthy",
+            "app_name": APP_NAME,
+            "version": "1.1.0",
+            "debug_mode": DEBUG,
+            "timestamp": datetime.utcnow().isoformat(),
+            "endpoints": {
+                "forecast": "/forecast",
+                "risk_calendar": "/risk-calendar",
+                "risk_calendar_top_k": "/risk-calendar/top-k",
+                "events": "/events",
+                "feedback": "/feedback",
+                "feedback_metrics": "/feedback/metrics",
+                "feedback_retrain": "/feedback/retrain",
+                "evaluation": "/evaluation",
+                "evaluation_classification": "/evaluation/classification",
+                "evaluation_regression": "/evaluation/regression",
+                "recommendations": "/recommendations",
+                "docs": "/docs"
+            }
         }
-    }
 
 @app.get("/health")
 def health_check():
